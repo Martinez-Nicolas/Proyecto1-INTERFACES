@@ -3,51 +3,41 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def procesar_figura_1c(ruta_imagen):
-    """
-    Procesa la Figura 1c y calcula:
-    a. Los Momentos de Hu's (Ver 2.35):
-        i. H1
-        ii. H2
-        iii. H3
-    """
-    
-    # Cargar la imagen
+    imagen
     imagen = cv2.imread(ruta_imagen)
     if imagen is None:
         raise ValueError(f"No se pudo cargar la imagen desde {ruta_imagen}")
     
-    # Convertir a escala de grises
     gris = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
     
-    # Crear máscara binaria para la figura azul
-    # Convertir BGR a HSV para mejor detección de color azul
+    hsv
     hsv = cv2.cvtColor(imagen, cv2.COLOR_BGR2HSV)
     
-    # Definir rango para color azul en HSV
+    azul_bajo
     azul_bajo = np.array([100, 50, 50])
     azul_alto = np.array([130, 255, 255])
     
-    # Crear máscara para azul
+    mascara_azul
     mascara_azul = cv2.inRange(hsv, azul_bajo, azul_alto)
     
-    # Calcular momentos básicos
+    momentos
     momentos = cv2.moments(mascara_azul)
     
     if momentos["m00"] == 0:
         print("Error: No se detectó la figura azul o área es cero")
         return None
     
-    # Calcular centroide
+    cx
     cx = momentos["m10"] / momentos["m00"]
     cy = momentos["m01"] / momentos["m00"]
     
     print(f"Centroide de la figura azul: ({cx:.2f}, {cy:.2f})")
     print(f"Área (m00): {momentos['m00']}")
     
-    # Calcular momentos centrales normalizados necesarios para Hu
+    momentos_centrales_norm
     momentos_centrales_norm = calcular_momentos_centrales_normalizados(mascara_azul, cx, cy)
     
-    # Calcular los primeros 3 Momentos de Hu (Ver 2.35)
+    hu_moments
     hu_moments = calcular_hu_moments(momentos_centrales_norm)
     
     print(f"\n=== MOMENTOS DE HU ===")
@@ -55,14 +45,14 @@ def procesar_figura_1c(ruta_imagen):
     print(f"H2: {hu_moments['H2']:.8f}")
     print(f"H3: {hu_moments['H3']:.8f}")
     
-    # También calcular usando OpenCV para verificación
+    hu_opencv
     hu_opencv = cv2.HuMoments(momentos).flatten()
     print(f"\n=== VERIFICACIÓN CON OPENCV ===")
     print(f"H1 (OpenCV): {hu_opencv[0]:.8f}")
     print(f"H2 (OpenCV): {hu_opencv[1]:.8f}")
     print(f"H3 (OpenCV): {hu_opencv[2]:.8f}")
     
-    # Visualización
+    plt.figure(figsize=(15, 5))
     plt.figure(figsize=(15, 5))
     
     plt.subplot(1, 3, 1)
@@ -75,11 +65,11 @@ def procesar_figura_1c(ruta_imagen):
     plt.title('Máscara de la Figura Azul')
     plt.axis('off')
     
-    # Marcar centroide en la imagen original
+    imagen_resultado
     imagen_resultado = imagen.copy()
     cx_int, cy_int = int(cx), int(cy)
     tamaño_cruz = 10
-    color_cruz = (0, 255, 255)  # Amarillo en BGR
+    color_cruz = (0, 255, 255)
     grosor = 2
     
     cv2.line(imagen_resultado, (cx_int - tamaño_cruz, cy_int), (cx_int + tamaño_cruz, cy_int), color_cruz, grosor)
@@ -102,17 +92,13 @@ def procesar_figura_1c(ruta_imagen):
     }
 
 def calcular_momentos_centrales_normalizados(mascara, cx, cy):
-    """
-    Calcula los momentos centrales normalizados η(p,q) necesarios para los momentos de Hu
-    Ver ecuación 2.23: η_pq = μ_pq / (μ_00)^((p+q)/2 + 1)
-    """
     altura, ancho = mascara.shape
     area = np.sum(mascara > 0)
     
-    # Calcular momentos centrales μ(p,q)
+    momentos_centrales
     momentos_centrales = {}
     
-    # Necesitamos η11, η20, η02, η30, η12, η21, η03 para los primeros 3 momentos de Hu
+    ordenes
     ordenes = [(1,1), (2,0), (0,2), (3,0), (1,2), (2,1), (0,3)]
     
     for p, q in ordenes:
@@ -122,7 +108,7 @@ def calcular_momentos_centrales_normalizados(mascara, cx, cy):
                 if mascara[y, x] > 0:
                     mu_pq += ((x - cx) ** p) * ((y - cy) ** q)
         
-        # Normalizar
+        gamma
         gamma = (p + q) / 2 + 1
         eta_pq = mu_pq / (area ** gamma)
         momentos_centrales[f"eta{p}{q}"] = eta_pq
@@ -133,17 +119,13 @@ def calcular_momentos_centrales_normalizados(mascara, cx, cy):
     return momentos_centrales
 
 def calcular_hu_moments(eta):
-    """
-    Calcula los primeros 3 momentos de Hu usando los momentos centrales normalizados
-    Ver ecuación 2.35
-    """
-    # H1 = η20 + η02
+    H1
     H1 = eta["eta20"] + eta["eta02"]
     
-    # H2 = (η20 - η02)² + 4η11²
+    H2
     H2 = (eta["eta20"] - eta["eta02"])**2 + 4 * (eta["eta11"])**2
     
-    # H3 = (η30 - 3η12)² + (3η21 - η03)²
+    H3
     H3 = (eta["eta30"] - 3*eta["eta12"])**2 + (3*eta["eta21"] - eta["eta03"])**2
     
     return {
@@ -153,8 +135,8 @@ def calcular_hu_moments(eta):
     }
 
 if __name__ == "__main__":
-    # Ejecutar con la imagen c.png
-    ruta = "c.png"
+    import os
+    ruta = os.path.join(os.path.dirname(__file__), "c.png")
     resultado = procesar_figura_1c(ruta)
     if resultado:
         print("\n=== RESULTADOS FIGURA 1C ===")
